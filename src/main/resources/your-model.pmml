@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PMML version="4.4" xmlns="http://www.dmg.org/PMML-4_4">
+    <Header>
+        <Application name="TestModel" version="1.0"/>
+    </Header>
+    <DataDictionary numberOfFields="2">
+        <DataField name="input1" optype="continuous" dataType="double"/>
+        <DataField name="output" optype="continuous" dataType="double"/>
+    </DataDictionary>
+    <RegressionModel modelName="SimpleLinearRegression" functionName="regression" algorithmName="linearRegression">
+        <MiningSchema>
+            <MiningField name="input1"/>
+            <MiningField name="output" usageType="target"/>
+        </MiningSchema>
+        <RegressionTable intercept="1.5">
+            <NumericPredictor name="input1" exponent="1" coefficient="2.0"/>
+        </RegressionTable>
+    </RegressionModel>
+</PMML>
