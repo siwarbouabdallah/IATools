@@ -1,60 +1,74 @@
 package com.example.iatools;
-
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
-import org.dmg.pmml.PMML;
 import org.jpmml.evaluator.*;
 import org.jpmml.model.PMMLUtil;
-import org.dmg.pmml.*;
-
-import java.io.FileInputStream;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import org.dmg.pmml.PMML;
-import org.jpmml.evaluator.ModelEvaluator;
-import org.jpmml.evaluator.ModelEvaluatorFactory;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.jpmml.evaluator.ModelEvaluator;
-import org.jpmml.evaluator.ModelEvaluatorFactory;
-import org.jpmml.model.PMMLUtil;
-import org.dmg.pmml.PMML;
-import org.dmg.pmml.Model;
 
 import java.io.File;
 import java.io.FileInputStream;
+import org.dmg.pmml.FieldName;
+import org.dmg.pmml.PMML;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @SpringBootApplication
 public class IaToolsApplication {
 
-	public static void main(String[] args) throws Exception {
-		FileInputStream fis = new FileInputStream("src/main/resources/test-model.pmml");
-	PMML pmml = PMMLUtil.unmarshal(fis);
+    public static void main(String[] args) {
+        SpringApplication.run(IaToolsApplication.class, args);
 
-	// Extraire le premier modèle
-	Model model = pmml.getModels().get(0);
+        // ---------- 1) Charger le fichier PMML ----------
+        String pmmlPath = "src/main/resources/your-model.pmml";
+        if (!Files.exists(Paths.get(pmmlPath))) {
+            System.err.println("Fichier PMML introuvable : " + pmmlPath);
+            return;
+        }
 
-	// Créer un évaluateur
-	ModelEvaluator<?> evaluator = ModelEvaluatorFactory.newInstance().newModelEvaluator(pmml, model);
-	evaluator.verify();
+        try (FileInputStream fis = new FileInputStream(pmmlPath)) {
+            PMML pmml = PMMLUtil.unmarshal(fis);
+            System.out.println("PMML loaded successfully");
 
-	// Créer les features d’entrée
-/*	Map<FieldName, FieldValue> arguments = new LinkedHashMap<>();
-	FieldName inputField = new FieldName("input1");
+            // ---------- 2) Construire l'évaluateur ----------
+            Evaluator evaluator = new LoadingModelEvaluatorBuilder()
+                                        .load(new File("src/main/resources/your-model.pmml"))
+                                        // optionnel : active les optimisations tableaux
+                                        .build();
 
-	FieldValue inputValue = evaluator.prepare(inputField, 3.0);
-	arguments.put(inputField, inputValue);
+            // Vérifier que tout est OK
+            evaluator.verify();
 
-	// Évaluer le modèle
-	Map<FieldName, ?> results = evaluator.evaluate(arguments);
+            // ---------- 3) Afficher les champs attendus ----------
+            List<InputField> inputFields = evaluator.getInputFields();
+            System.out.println("Input fields:");
+            inputFields.forEach(f ->
+                System.out.println(" - " + f.getName() + " (" + f.getDataType() + ", " + f.getOpType() + ")")
+            );
 
-	// Récupérer la sortie
-	FieldName targetField = evaluator.getTargetFields().get(0).getName();
-	Object predictedValue = results.get(targetField);
+            // ---------- 4) Préparer les arguments ----------
+            Map<FieldName, FieldValue> arguments = new LinkedHashMap<>();
+            for (InputField inputField : inputFields) {
+                FieldName name   = inputField.getName();   // ici « input1 »
+                Object    rawVal = 3.0;                    // valeur de test
+                FieldValue val   = inputField.prepare(rawVal);
+                arguments.put(name, val);
+            }
+            System.out.println("Arguments: " + arguments);
 
-	System.out.println("Input: 3.0 → Predicted output: " + predictedValue); */
-}
+            // ---------- 5) Évaluer ----------
+            Map<FieldName, ?> results = evaluator.evaluate(arguments);
+
+            // ---------- 6) Extraire la prédiction ----------
+            FieldName targetName = evaluator.getTargetFields().get(0).getName(); // « output »
+            Object prediction     = results.get(targetName);
+
+            System.out.println("Prediction = " + prediction); // attendu : 11.0
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
